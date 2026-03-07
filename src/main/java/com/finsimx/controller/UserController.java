@@ -40,7 +40,7 @@ public class UserController {
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(ApiResponse.success(userResponse, "Profile fetched successfully"));
+                .body(ApiResponse.success("Profile fetched successfully", userResponse));
     }
 
     /**
@@ -55,7 +55,7 @@ public class UserController {
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(ApiResponse.success(userResponse, "User profile fetched successfully"));
+                .body(ApiResponse.success("User profile fetched successfully", userResponse));
     }
 
     /**
@@ -78,7 +78,9 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ApiResponse.success(
-                        java.util.Map.of("userId", userResponse.getId(), "balance", userResponse.getBalance()),
-                        "Balance fetched successfully"));
+                        "Balance fetched successfully",
+                        java.util.Map.of(
+                                "userId", userResponse.getId(),
+                                "balance", userResponse.getBalance())));
     }
 }

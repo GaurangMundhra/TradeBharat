@@ -23,6 +23,13 @@ public class AuthException extends RuntimeException {
         this.statusCode = statusCode;
     }
 
+    // ⭐ ADD THIS CONSTRUCTOR
+    public AuthException(String errorCode, int statusCode, String message) {
+        super(message);
+        this.errorCode = errorCode;
+        this.statusCode = statusCode;
+    }
+
     public String getErrorCode() {
         return errorCode;
     }

@@ -17,8 +17,7 @@ public class ApiResponse<T> {
     private int statusCode;
     private String timestamp;
 
-    // Helper methods
-    public static <T> ApiResponse<T> success(T data, String message) {
+    public static <T> ApiResponse<T> success(String message, T data) {
         return ApiResponse.<T>builder()
                 .success(true)
                 .message(message)
