@@ -7,9 +7,9 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "wallet_transactions", indexes = {
-    @Index(name = "idx_user_id", columnList = "user_id"),
-    @Index(name = "idx_created_at", columnList = "created_at"),
-    @Index(name = "idx_user_type", columnList = "user_id, transaction_type")
+        @Index(name = "idx_user_id", columnList = "user_id"),
+        @Index(name = "idx_created_at", columnList = "created_at"),
+        @Index(name = "idx_user_type", columnList = "user_id, transaction_type")
 })
 @Data
 @NoArgsConstructor

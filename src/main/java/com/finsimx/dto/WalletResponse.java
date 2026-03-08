@@ -20,9 +20,9 @@ public class WalletResponse {
     private LocalDateTime lastTransactionAt;
     private LocalDateTime updatedAt;
 
-    public static WalletResponse from(User user, BigDecimal totalDeposits, 
-                                     BigDecimal totalWithdrawals, Integer transactionCount,
-                                     LocalDateTime lastTransactionAt) {
+    public static WalletResponse from(User user, BigDecimal totalDeposits,
+            BigDecimal totalWithdrawals, Integer transactionCount,
+            LocalDateTime lastTransactionAt) {
         return WalletResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())

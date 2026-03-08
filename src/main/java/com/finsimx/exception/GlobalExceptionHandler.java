@@ -53,6 +53,33 @@ public class GlobalExceptionHandler {
                                 .body(ApiResponse.error(ex.getMessage(), ex.getStatusCode()));
         }
 
+        @ExceptionHandler(OrderException.class)
+        public ResponseEntity<ApiResponse<?>> handleOrderException(
+                        OrderException ex, WebRequest request) {
+                log.warn("Order error: {} - {}", ex.getErrorCode(), ex.getMessage());
+                return ResponseEntity
+                                .status(HttpStatus.valueOf(ex.getStatusCode()))
+                                .body(ApiResponse.error(ex.getMessage(), ex.getStatusCode()));
+        }
+
+        @ExceptionHandler(InsufficientBalanceForOrderException.class)
+        public ResponseEntity<ApiResponse<?>> handleInsufficientBalanceForOrderException(
+                        InsufficientBalanceForOrderException ex, WebRequest request) {
+                log.warn("Insufficient balance for order: {}", ex.getMessage());
+                return ResponseEntity
+                                .status(HttpStatus.BAD_REQUEST)
+                                .body(ApiResponse.error(ex.getMessage(), 400));
+        }
+
+        @ExceptionHandler(OrderNotFoundException.class)
+        public ResponseEntity<ApiResponse<?>> handleOrderNotFoundException(
+                        OrderNotFoundException ex, WebRequest request) {
+                log.warn("Order not found: {}", ex.getMessage());
+                return ResponseEntity
+                                .status(HttpStatus.NOT_FOUND)
+                                .body(ApiResponse.error(ex.getMessage(), 404));
+        }
+
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<ApiResponse<?>> handleValidationException(
                         MethodArgumentNotValidException ex, WebRequest request) {

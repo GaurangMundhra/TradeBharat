@@ -28,15 +28,16 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
     /**
      * Find transactions by user and type
      */
-    List<WalletTransaction> findByUserAndTransactionTypeOrderByCreatedAtDesc(User user, WalletTransaction.TransactionType transactionType);
+    List<WalletTransaction> findByUserAndTransactionTypeOrderByCreatedAtDesc(User user,
+            WalletTransaction.TransactionType transactionType);
 
     /**
      * Find transactions within a date range
      */
     @Query("SELECT wt FROM WalletTransaction wt WHERE wt.user = :user AND wt.createdAt BETWEEN :startDate AND :endDate ORDER BY wt.createdAt DESC")
     List<WalletTransaction> findTransactionsByDateRange(@Param("user") User user,
-                                                        @Param("startDate") LocalDateTime startDate,
-                                                        @Param("endDate") LocalDateTime endDate);
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 
     /**
      * Get total amount deposited by user
