@@ -28,6 +28,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final WalletService walletService;
+    private final MatchingService matchingService;
 
     /*
      * ------------------------------------------------------------
@@ -180,6 +181,21 @@ public class OrderService {
                 .build();
 
         Order saved = orderRepository.save(order);
+        log.info("Order {} created: {} {} @ {} qty={}", 
+            saved.getId(), orderType, saved.getAsset(), saved.getPrice(), saved.getQuantity());
+
+        // Trigger order matching
+        try {
+            var trades = matchingService.matchOrder(saved);
+            if (!trades.isEmpty()) {
+                log.info("Order {} matched with {} trades", saved.getId(), trades.size());
+                // Reload order to get updated filled quantity
+                saved = orderRepository.findById(saved.getId()).orElse(saved);
+            }
+        } catch (Exception e) {
+            log.warn("Matching failed for order {}: {}", saved.getId(), e.getMessage());
+            // Don't fail the order placement if matching fails
+        }
 
         return OrderResponse.from(saved);
     }
@@ -295,6 +311,15 @@ public class OrderService {
         order.setUpdatedAt(LocalDateTime.now());
 
         Order saved = orderRepository.save(order);
+
+        // Remove order from matching order book
+        try {
+            matchingService.processCancelledOrder(saved);
+            log.info("Order {} removed from order book", orderId);
+        } catch (Exception e) {
+            log.warn("Failed to remove order from book: {}", e.getMessage());
+            // Don't fail the cancellation if removal from book fails
+        }
 
         return OrderResponse.from(saved);
     }

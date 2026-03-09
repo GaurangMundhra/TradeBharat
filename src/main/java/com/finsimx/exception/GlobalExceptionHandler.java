@@ -80,6 +80,15 @@ public class GlobalExceptionHandler {
                                 .body(ApiResponse.error(ex.getMessage(), 404));
         }
 
+        @ExceptionHandler(MatchingException.class)
+        public ResponseEntity<ApiResponse<?>> handleMatchingException(
+                        MatchingException ex, WebRequest request) {
+                log.warn("Matching error: {} - {}", ex.getErrorCode(), ex.getMessage());
+                return ResponseEntity
+                                .status(HttpStatus.valueOf(ex.getStatusCode()))
+                                .body(ApiResponse.error(ex.getMessage(), ex.getStatusCode()));
+        }
+
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<ApiResponse<?>> handleValidationException(
                         MethodArgumentNotValidException ex, WebRequest request) {
