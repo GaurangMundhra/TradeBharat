@@ -46,4 +46,11 @@ public class Trade {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+
+    /**
+     * Total trade value = price × quantity
+     */
+    public BigDecimal getTotalValue() {
+        return price.multiply(quantity);
+    }
 }

@@ -1,0 +1,2 @@
+ALTER TABLE positions
+ADD COLUMN average_cost DECIMAL(20,8) DEFAULT 0;

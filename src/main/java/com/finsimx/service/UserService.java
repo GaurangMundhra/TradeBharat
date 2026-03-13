@@ -68,7 +68,10 @@ public class UserService {
         log.info("User registered successfully: {} with ID: {}", savedUser.getUsername(), savedUser.getId());
 
         // Generate JWT token
-        String token = jwtTokenProvider.generateToken(savedUser.getId(), savedUser.getUsername());
+        String token = jwtTokenProvider.generateToken(
+                savedUser.getId(),
+                savedUser.getUsername(),
+                savedUser.getRole());
 
         return AuthResponse.success(
                 token,
@@ -100,7 +103,10 @@ public class UserService {
         log.info("User logged in successfully: {}", user.getUsername());
 
         // Generate JWT token
-        String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
+        String token = jwtTokenProvider.generateToken(
+                user.getId(),
+                user.getUsername(),
+                user.getRole());
 
         return AuthResponse.success(
                 token,

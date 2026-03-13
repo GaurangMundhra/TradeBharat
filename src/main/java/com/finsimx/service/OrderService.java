@@ -181,8 +181,8 @@ public class OrderService {
                 .build();
 
         Order saved = orderRepository.save(order);
-        log.info("Order {} created: {} {} @ {} qty={}", 
-            saved.getId(), orderType, saved.getAsset(), saved.getPrice(), saved.getQuantity());
+        log.info("Order {} created: {} {} @ {} qty={}",
+                saved.getId(), orderType, saved.getAsset(), saved.getPrice(), saved.getQuantity());
 
         // Trigger order matching
         try {

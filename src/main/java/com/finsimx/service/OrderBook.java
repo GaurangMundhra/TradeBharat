@@ -18,7 +18,7 @@ import java.util.*;
 public class OrderBook {
 
     private final String asset;
-    private final PriorityQueue<Order> buyOrders;  // Max heap (highest price first)
+    private final PriorityQueue<Order> buyOrders; // Max heap (highest price first)
     private final PriorityQueue<Order> sellOrders; // Min heap (lowest price first)
 
     public OrderBook(String asset) {
@@ -27,14 +27,16 @@ public class OrderBook {
         // BUY orders: Sort by price DESC, then by createdAt ASC (FIFO at same price)
         this.buyOrders = new PriorityQueue<>((o1, o2) -> {
             int priceCompare = o2.getPrice().compareTo(o1.getPrice()); // DESC
-            if (priceCompare != 0) return priceCompare;
+            if (priceCompare != 0)
+                return priceCompare;
             return o1.getCreatedAt().compareTo(o2.getCreatedAt()); // ASC
         });
 
         // SELL orders: Sort by price ASC, then by createdAt ASC (FIFO at same price)
         this.sellOrders = new PriorityQueue<>((o1, o2) -> {
             int priceCompare = o1.getPrice().compareTo(o2.getPrice()); // ASC
-            if (priceCompare != 0) return priceCompare;
+            if (priceCompare != 0)
+                return priceCompare;
             return o1.getCreatedAt().compareTo(o2.getCreatedAt()); // ASC
         });
     }
