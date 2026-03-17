@@ -41,6 +41,11 @@ public class WebSecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+
+                        // ✅ WebSocket endpoints (VERY IMPORTANT)
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/api/ws/**").permitAll()
+
                         // Public endpoints
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/api/health").permitAll()

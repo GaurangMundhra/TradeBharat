@@ -30,6 +30,7 @@ public class MatchingService {
     private final OrderRepository orderRepository;
     private final TradeRepository tradeRepository;
     private final WalletService walletService;
+    private final NotificationService notificationService;
 
     // Order books per asset: asset -> OrderBook
     private final Map<String, OrderBook> orderBooks = Collections.synchronizedMap(new HashMap<>());
@@ -182,8 +183,36 @@ public class MatchingService {
         buyOrder.setFilledQuantity(buyOrder.getFilledQuantity().add(quantity));
         sellOrder.setFilledQuantity(sellOrder.getFilledQuantity().add(quantity));
 
-        // Save trade
         trade = tradeRepository.save(trade);
+
+        // 🔥 ORDER MATCHED (BUY SIDE)
+        notificationService.notifyOrderMatched(
+                buyOrder.getId(),
+                trade.getId(),
+                trade.getAsset(),
+                "BUY",
+                quantity.longValue(),
+                price.doubleValue());
+
+        // 🔥 ORDER MATCHED (SELL SIDE)
+        notificationService.notifyOrderMatched(
+                sellOrder.getId(),
+                trade.getId(),
+                trade.getAsset(),
+                "SELL",
+                quantity.longValue(),
+                price.doubleValue());
+
+        // 🔥 TRADE EXECUTED
+        notificationService.notifyTradeExecution(
+                trade.getId(),
+                trade.getBuyer().getId(),
+                trade.getSeller().getId(),
+                trade.getBuyer().getUsername(),
+                trade.getSeller().getUsername(),
+                trade.getAsset(),
+                quantity.longValue(),
+                price.doubleValue());
 
         log.info("Trade executed: {} {} @ {} = {} (Buy: {}, Sell: {})",
                 quantity, trade.getAsset(), price, trade.getPrice().multiply(trade.getQuantity()),
