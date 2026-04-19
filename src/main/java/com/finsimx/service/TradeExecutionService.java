@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.finsimx.dto.ws.PriceUpdate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -41,6 +41,8 @@ public class TradeExecutionService {
     private final PositionRepository positionRepository;
     private final UserRepository userRepository;
     private final MatchingService matchingService;
+    private final MarketDataService marketDataService;
+    private final NotificationService notificationService;
 
     /**
      * Execute/settle a trade
@@ -104,6 +106,14 @@ public class TradeExecutionService {
             settlement.setSettledAt(LocalDateTime.now());
 
             settlement = settlementRepository.save(settlement);
+
+            // ===== NEW: Update market price and broadcast to clients =====
+            PriceUpdate updatedPrice = marketDataService.updatePriceFromTrade(
+                    trade.getAsset(),
+                    trade.getPrice());
+
+            notificationService.notifyPriceUpdate(updatedPrice);
+            // ============================================================
 
             log.info("Trade {} settled: Buyer {}, Seller {}, Asset {}, Qty {}, Price {}",
                     tradeId, trade.getBuyer().getUsername(), trade.getSeller().getUsername(),

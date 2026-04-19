@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -135,6 +136,39 @@ public class MarketDataService {
         update.setVolume(System.currentTimeMillis() % 1000000);
 
         priceCache.put(asset, update);
+    }
+
+    /**
+     * Update price from trade execution (real-time price feed)
+     * Thread-safe method called after every trade settlement
+     * Triggers price update notifications to all clients
+     */
+    public PriceUpdate updatePriceFromTrade(String asset, BigDecimal tradePrice) {
+        if (asset == null || tradePrice == null) {
+            log.warn("Invalid asset or trade price: asset={}, price={}", asset, tradePrice);
+            return null;
+        }
+
+        Double price = tradePrice.doubleValue();
+        PriceUpdate previous = priceCache.getOrDefault(asset, generateMockPrice(asset));
+
+        // Create updated price entry
+        PriceUpdate update = new PriceUpdate();
+        update.setAsset(asset);
+        update.setCurrentPrice(price);
+        update.setPreviousPrice(previous.getCurrentPrice());
+        update.setChange(price - previous.getCurrentPrice());
+        update.setChangePercent((update.getChange() / previous.getCurrentPrice()) * 100);
+        update.setTimestamp(System.currentTimeMillis());
+        update.setVolume(previous.getVolume() + 1); // Increment volume
+
+        // Thread-safe update to price cache (ConcurrentHashMap)
+        priceCache.put(asset, update);
+
+        log.debug("Price updated from trade execution: {} = {} (prev: {}, change: {:.2f}%)",
+                asset, price, previous.getCurrentPrice(), update.getChangePercent());
+
+        return update;
     }
 
     /**

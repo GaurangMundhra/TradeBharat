@@ -19,14 +19,11 @@ public class NotificationService {
     /**
      * Notify price update to all connected clients
      */
-    public void notifyPriceUpdate(String asset, Double price) {
-        PriceUpdate priceUpdate = new PriceUpdate();
-        priceUpdate.setAsset(asset);
-        priceUpdate.setCurrentPrice(price);
+    public void notifyPriceUpdate(PriceUpdate priceUpdate) {
         priceUpdate.setTimestamp(System.currentTimeMillis());
 
         webSocketHandler.broadcastPriceUpdate(priceUpdate);
-        log.debug("Price update broadcast: {} = {}", asset, price);
+        log.debug("Price update broadcast: {} = {}", priceUpdate.getAsset(), priceUpdate.getCurrentPrice());
     }
 
     /**

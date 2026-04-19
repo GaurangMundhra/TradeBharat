@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.finsimx.dto.ws.PriceUpdate;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -31,6 +32,7 @@ public class MatchingService {
     private final TradeRepository tradeRepository;
     private final WalletService walletService;
     private final NotificationService notificationService;
+    private final MarketDataService marketDataService;
 
     // Order books per asset: asset -> OrderBook
     private final Map<String, OrderBook> orderBooks = Collections.synchronizedMap(new HashMap<>());
@@ -217,6 +219,11 @@ public class MatchingService {
         log.info("Trade executed: {} {} @ {} = {} (Buy: {}, Sell: {})",
                 quantity, trade.getAsset(), price, trade.getPrice().multiply(trade.getQuantity()),
                 buyOrder.getUser().getUsername(), sellOrder.getUser().getUsername());
+
+        // ===== NEW: Update market price and broadcast to clients =====
+        PriceUpdate updatedPrice = marketDataService.updatePriceFromTrade(trade.getAsset(), trade.getPrice());
+        notificationService.notifyPriceUpdate(updatedPrice);
+        // ============================================================
 
         return trade;
     }

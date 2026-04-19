@@ -118,7 +118,11 @@ public class SettlementController {
             Authentication authentication) {
 
         String username = (String) authentication.getPrincipal();
-        Long userId = Long.valueOf(username.split(":")[0]);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Long userId = user.getId();
 
         PositionResponse position = tradeExecutionService.getPosition(userId, asset.toUpperCase());
         return ResponseEntity.ok(ApiResponse.success("Position retrieved successfully", position));
@@ -132,7 +136,11 @@ public class SettlementController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> getPortfolio(Authentication authentication) {
         String username = (String) authentication.getPrincipal();
-        Long userId = Long.valueOf(username.split(":")[0]);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Long userId = user.getId();
 
         PortfolioResponse portfolio = tradeExecutionService.getPortfolio(userId, matchingService);
         return ResponseEntity.ok(ApiResponse.success("Portfolio retrieved successfully", portfolio));
