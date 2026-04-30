@@ -1,5 +1,7 @@
 package com.finsimx.service;
 
+import com.finsimx.dto.ws.OrderBookUpdate;
+import com.finsimx.service.OrderBook;
 import com.finsimx.dto.CreateOrderRequest;
 import com.finsimx.dto.OrderResponse;
 import com.finsimx.dto.OrderStatsResponse;
@@ -29,6 +31,7 @@ public class OrderService {
     private final UserRepository userRepository;
     private final WalletService walletService;
     private final MatchingService matchingService;
+    private final NotificationService notificationService;
 
     /*
      * ------------------------------------------------------------
@@ -187,6 +190,26 @@ public class OrderService {
         // Trigger order matching
         try {
             var trades = matchingService.matchOrder(saved);
+
+            // 🔥 ORDER BOOK UPDATE (CORRECT WAY)
+            try {
+                OrderBook book = matchingService.getInternalOrderBook(saved.getAsset());
+
+                if (book != null) {
+                    OrderBookUpdate update = new OrderBookUpdate();
+                    update.setAsset(saved.getAsset());
+                    update.setBids(book.getTopBids(5));
+                    update.setAsks(book.getTopAsks(5));
+                    update.setTimestamp(System.currentTimeMillis());
+
+                    notificationService.notifyOrderBookUpdate(update);
+
+                    log.info("OrderBook update sent for {}", saved.getAsset());
+                }
+
+            } catch (Exception e) {
+                log.warn("Failed to send order book update: {}", e.getMessage());
+            }
             if (!trades.isEmpty()) {
                 log.info("Order {} matched with {} trades", saved.getId(), trades.size());
                 // Reload order to get updated filled quantity

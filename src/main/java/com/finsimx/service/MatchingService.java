@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.finsimx.dto.ws.PriceUpdate;
+import com.finsimx.dto.ws.OrderBookUpdate;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -63,6 +64,17 @@ public class MatchingService {
                         newOrder.getId(), newOrder.getAsset(),
                         newOrder.getQuantity().subtract(newOrder.getFilledQuantity()));
             }
+
+            // 🔥 ORDER BOOK UPDATE EVEN WITHOUT TRADE
+            OrderBookUpdate bookUpdate = new OrderBookUpdate();
+            bookUpdate.setAsset(newOrder.getAsset());
+            bookUpdate.setBids(book.getTopBids(5));
+            bookUpdate.setAsks(book.getTopAsks(5));
+            bookUpdate.setTimestamp(System.currentTimeMillis());
+
+            notificationService.notifyOrderBookUpdate(bookUpdate);
+
+            log.debug("Order book update (no trade) for {}", newOrder.getAsset());
 
             log.info("Order {} matched with {} trades", newOrder.getId(), generatedTrades.size());
 
@@ -225,6 +237,21 @@ public class MatchingService {
         notificationService.notifyPriceUpdate(updatedPrice);
         // ============================================================
 
+        // ===== NEW: Broadcast order book depth (Level 2 data) =====
+        OrderBook book = orderBooks.get(trade.getAsset());
+        if (book != null) {
+            OrderBookUpdate bookUpdate = new OrderBookUpdate();
+            bookUpdate.setAsset(trade.getAsset());
+            bookUpdate.setBids(book.getTopBids(5)); // Top 5 bid levels
+            bookUpdate.setAsks(book.getTopAsks(5)); // Top 5 ask levels
+            bookUpdate.setTimestamp(System.currentTimeMillis());
+
+            notificationService.notifyOrderBookUpdate(bookUpdate);
+            log.debug("Order book update broadcast for {}: {} bids, {} asks",
+                    trade.getAsset(), bookUpdate.getBids().size(), bookUpdate.getAsks().size());
+        }
+        // ==========================================================
+
         return trade;
     }
 
@@ -337,5 +364,10 @@ public class MatchingService {
         stats.put("orderBook", getOrderBook(asset));
 
         return stats;
+    }
+
+    // 🔥 ADD THIS METHOD (CRITICAL FIX)
+    public OrderBook getInternalOrderBook(String asset) {
+        return orderBooks.get(asset);
     }
 }

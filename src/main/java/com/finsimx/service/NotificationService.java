@@ -192,4 +192,22 @@ public class NotificationService {
         String message = String.format("Insufficient funds. Required: $%.2f, Available: $%.2f", required, available);
         sendErrorNotification(userId, "Insufficient Funds", message);
     }
+
+    /**
+     * Notify order book update with depth levels
+     * Broadcasts latest bid/ask depth to all connected clients on /ws/order-book
+     */
+    public void notifyOrderBookUpdate(OrderBookUpdate orderBookUpdate) {
+        if (orderBookUpdate == null) {
+            log.warn("Order book update is null, skipping notification");
+            return;
+        }
+
+        orderBookUpdate.setTimestamp(System.currentTimeMillis());
+        webSocketHandler.broadcastOrderBookUpdate(orderBookUpdate);
+        log.debug("Order book update broadcast: {} - {} bids, {} asks",
+                orderBookUpdate.getAsset(),
+                orderBookUpdate.getBids() != null ? orderBookUpdate.getBids().size() : 0,
+                orderBookUpdate.getAsks() != null ? orderBookUpdate.getAsks().size() : 0);
+    }
 }

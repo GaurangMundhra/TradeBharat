@@ -58,6 +58,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 case "SUBSCRIBE_PRICE" -> handlePriceSubscription(session, request, endpoint);
                 case "SUBSCRIBE_POSITION" -> handlePositionSubscription(session, request, endpoint);
                 case "SUBSCRIBE_PORTFOLIO" -> handlePortfolioSubscription(session, request, endpoint);
+                case "SUBSCRIBE_ORDER_BOOK" -> handleOrderBookSubscription(session, request, endpoint);
                 case "UNSUBSCRIBE" -> handleUnsubscription(session, request, endpoint);
                 case "GET_LATEST_PRICE" -> handleLatestPriceRequest(session, request, endpoint);
                 case "PING" -> handlePing(session);
@@ -151,6 +152,27 @@ public class WebSocketHandler extends TextWebSocketHandler {
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
     }
 
+    private void handleOrderBookSubscription(WebSocketSession session, WebSocketRequest request, String endpoint)
+            throws IOException {
+        String asset = (String) request.getPayload().get("asset");
+        Integer depth = (Integer) request.getPayload().getOrDefault("depth", 5);
+        log.info("User subscribed to order book for asset: {} with depth: {}", asset, depth);
+
+        // Send order book snapshot (will be implemented in next step)
+        // For now, just confirm subscription
+        WebSocketMessage message = new WebSocketMessage(
+                "ORDER_BOOK_SUBSCRIBED",
+                new java.util.HashMap<String, Object>() {
+                    {
+                        put("asset", asset);
+                        put("depth", depth);
+                        put("message", "Subscribed to order book updates");
+                    }
+                },
+                System.currentTimeMillis());
+        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
+    }
+
     private void handleUnsubscription(WebSocketSession session, WebSocketRequest request, String endpoint)
             throws IOException {
         String subscription = (String) request.getPayload().get("subscription");
@@ -231,6 +253,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
         broadcastToEndpoint("/ws/trading", new WebSocketMessage(
                 "ORDER_CANCELLED",
                 orderCancelled,
+                System.currentTimeMillis()));
+    }
+
+    public void broadcastOrderBookUpdate(OrderBookUpdate orderBookUpdate) {
+        broadcastToEndpoint("/ws/order-book", new WebSocketMessage(
+                "ORDER_BOOK_UPDATE",
+                orderBookUpdate,
                 System.currentTimeMillis()));
     }
 

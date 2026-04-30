@@ -3,6 +3,7 @@ package com.finsimx.service;
 import com.finsimx.entity.Order;
 import com.finsimx.entity.Trade;
 import com.finsimx.entity.User;
+import com.finsimx.dto.ws.OrderBookLevel;
 import lombok.Getter;
 import java.math.BigDecimal;
 import java.util.*;
@@ -137,7 +138,50 @@ public class OrderBook {
     }
 
     /**
-     * Get order book snapshot
+     * Get top N bid levels with aggregated quantities
+     * Groups orders by price and sums quantities
+     * Returns highest prices first (sorted DESC)
+     */
+    public List<OrderBookLevel> getTopBids(int depth) {
+        Map<BigDecimal, BigDecimal> bidLevels = new TreeMap<>((p1, p2) -> p2.compareTo(p1)); // DESC
+
+        for (Order buyOrder : buyOrders) {
+            BigDecimal availableQty = buyOrder.getQuantity().subtract(buyOrder.getFilledQuantity());
+            if (availableQty.compareTo(BigDecimal.ZERO) > 0) {
+                bidLevels.merge(buyOrder.getPrice(), availableQty, BigDecimal::add);
+            }
+        }
+
+        return bidLevels.entrySet().stream()
+                .limit(depth)
+                .map(e -> new OrderBookLevel(e.getKey().doubleValue(), e.getValue().doubleValue()))
+                .toList();
+    }
+
+    /**
+     * Get top N ask levels with aggregated quantities
+     * Groups orders by price and sums quantities
+     * Returns lowest prices first (sorted ASC)
+     */
+    public List<OrderBookLevel> getTopAsks(int depth) {
+        Map<BigDecimal, BigDecimal> askLevels = new TreeMap<>(); // ASC (natural order)
+
+        for (Order sellOrder : sellOrders) {
+            BigDecimal availableQty = sellOrder.getQuantity().subtract(sellOrder.getFilledQuantity());
+            if (availableQty.compareTo(BigDecimal.ZERO) > 0) {
+                askLevels.merge(sellOrder.getPrice(), availableQty, BigDecimal::add);
+            }
+        }
+
+        return askLevels.entrySet().stream()
+                .limit(depth)
+                .map(e -> new OrderBookLevel(e.getKey().doubleValue(), e.getValue().doubleValue()))
+                .toList();
+    }
+
+    /**
+     * Get order book snapshot for market data
+     * Returns current best bids/asks and depth info
      */
     public Map<String, Object> getSnapshot() {
         Map<String, Object> snapshot = new HashMap<>();
