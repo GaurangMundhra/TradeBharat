@@ -263,6 +263,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 System.currentTimeMillis()));
     }
 
+    public void broadcastCandleUpdate(CandleDTO candle) {
+        broadcastToEndpoint("/ws/candles", new WebSocketMessage(
+                "CANDLE_UPDATE",
+                candle,
+                System.currentTimeMillis()));
+    }
+
     private void broadcastToEndpoint(String endpoint, WebSocketMessage message) {
         Set<WebSocketSession> sessions = sessionsByEndpoint.getOrDefault(endpoint, new HashSet<>());
         String payload;

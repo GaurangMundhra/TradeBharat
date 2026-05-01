@@ -27,6 +27,14 @@ public class NotificationService {
     }
 
     /**
+     * Notify candle (OHLC) update to all connected clients
+     */
+    public void notifyCandleUpdate(CandleDTO candle) {
+        webSocketHandler.broadcastCandleUpdate(candle);
+        log.debug("Candle update broadcast: {} {} at {}", candle.getAsset(), candle.getInterval(), candle.getStartTime());
+    }
+
+    /**
      * Notify trade execution
      */
     public void notifyTradeExecution(Long tradeId, Long buyerId, Long sellerId,

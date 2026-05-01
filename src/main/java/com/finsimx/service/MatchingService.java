@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.finsimx.dto.ws.PriceUpdate;
 import com.finsimx.dto.ws.OrderBookUpdate;
+import com.finsimx.dto.ws.CandleDTO;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -34,6 +35,7 @@ public class MatchingService {
     private final WalletService walletService;
     private final NotificationService notificationService;
     private final MarketDataService marketDataService;
+    private final CandleService candleService;
 
     // Order books per asset: asset -> OrderBook
     private final Map<String, OrderBook> orderBooks = Collections.synchronizedMap(new HashMap<>());
@@ -251,6 +253,18 @@ public class MatchingService {
                     trade.getAsset(), bookUpdate.getBids().size(), bookUpdate.getAsks().size());
         }
         // ==========================================================
+
+        // ===== NEW: Update OHLC candles and broadcast to clients =====
+        CandleDTO candle = candleService.updateCandle(
+                trade.getAsset(),
+                trade.getPrice().doubleValue(),
+                trade.getQuantity().doubleValue()
+        );
+        notificationService.notifyCandleUpdate(candle);
+        log.debug("Candle updated: {} (O:{} H:{} L:{} C:{} V:{})",
+                trade.getAsset(), candle.getOpen(), candle.getHigh(),
+                candle.getLow(), candle.getClose(), candle.getVolume());
+        // ===========================================================
 
         return trade;
     }

@@ -31,5 +31,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
                 registry.addHandler(webSocketHandler, "/ws/order-book")
                                 .setAllowedOrigins("*");
+
+                registry.addHandler(webSocketHandler, "/ws/candles")
+                                .setAllowedOrigins("*");
         }
 }
