@@ -31,7 +31,8 @@ public class NotificationService {
      */
     public void notifyCandleUpdate(CandleDTO candle) {
         webSocketHandler.broadcastCandleUpdate(candle);
-        log.debug("Candle update broadcast: {} {} at {}", candle.getAsset(), candle.getInterval(), candle.getStartTime());
+        log.debug("Candle update broadcast: {} {} at {}", candle.getAsset(), candle.getInterval(),
+                candle.getStartTime());
     }
 
     /**

@@ -41,8 +41,8 @@ public class CandleService {
     /**
      * Update or create candle for an asset based on trade execution
      * 
-     * @param asset Trading asset (e.g., "AAPL")
-     * @param price Trade price
+     * @param asset    Trading asset (e.g., "AAPL")
+     * @param price    Trade price
      * @param quantity Trade quantity
      */
     public CandleDTO updateCandle(String asset, Double price, Double quantity) {
@@ -52,8 +52,8 @@ public class CandleService {
     /**
      * Update or create candle for a specific interval
      * 
-     * @param asset Trading asset
-     * @param price Trade execution price
+     * @param asset    Trading asset
+     * @param price    Trade execution price
      * @param quantity Trade execution quantity
      * @param interval Time interval (e.g., "1m")
      * @return Updated or newly created candle
@@ -100,7 +100,7 @@ public class CandleService {
         activeCandles.put(candleKey, candle);
 
         log.debug("Candle updated: {} {} = O:{} H:{} L:{} C:{} V:{}",
-                asset, interval, candle.getOpen(), candle.getHigh(), 
+                asset, interval, candle.getOpen(), candle.getHigh(),
                 candle.getLow(), candle.getClose(), candle.getVolume());
 
         return candle;
@@ -159,7 +159,7 @@ public class CandleService {
         completedCandles.computeIfAbsent(candleKey, k -> new LinkedList<>())
                 .addFirst(candle); // Add to front (newest first)
 
-        log.info("Candle finalized: {} {} (V:{}) stored in history", 
+        log.info("Candle finalized: {} {} (V:{}) stored in history",
                 candle.getAsset(), candle.getInterval(), candle.getVolume());
     }
 

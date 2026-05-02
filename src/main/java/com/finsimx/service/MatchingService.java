@@ -258,8 +258,7 @@ public class MatchingService {
         CandleDTO candle = candleService.updateCandle(
                 trade.getAsset(),
                 trade.getPrice().doubleValue(),
-                trade.getQuantity().doubleValue()
-        );
+                trade.getQuantity().doubleValue());
         notificationService.notifyCandleUpdate(candle);
         log.debug("Candle updated: {} (O:{} H:{} L:{} C:{} V:{})",
                 trade.getAsset(), candle.getOpen(), candle.getHigh(),
