@@ -59,6 +59,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 case "SUBSCRIBE_POSITION" -> handlePositionSubscription(session, request, endpoint);
                 case "SUBSCRIBE_PORTFOLIO" -> handlePortfolioSubscription(session, request, endpoint);
                 case "SUBSCRIBE_ORDER_BOOK" -> handleOrderBookSubscription(session, request, endpoint);
+                case "SUBSCRIBE_CANDLES" -> handleCandleSubscription(session, request, endpoint);
                 case "UNSUBSCRIBE" -> handleUnsubscription(session, request, endpoint);
                 case "GET_LATEST_PRICE" -> handleLatestPriceRequest(session, request, endpoint);
                 case "PING" -> handlePing(session);
@@ -170,6 +171,29 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     }
                 },
                 System.currentTimeMillis());
+        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
+    }
+
+    private void handleCandleSubscription(WebSocketSession session,
+            WebSocketRequest request,
+            String endpoint) throws IOException {
+
+        String asset = (String) request.getPayload().get("asset");
+        String interval = (String) request.getPayload().getOrDefault("interval", "1m");
+
+        log.info("User subscribed to candles: {} {}", asset, interval);
+
+        WebSocketMessage message = new WebSocketMessage(
+                "CANDLE_SUBSCRIBED",
+                new HashMap<String, Object>() {
+                    {
+                        put("asset", asset);
+                        put("interval", interval);
+                        put("message", "Subscribed to candle updates");
+                    }
+                },
+                System.currentTimeMillis());
+
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
     }
 

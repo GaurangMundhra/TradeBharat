@@ -1,6 +1,7 @@
 package com.finsimx.service;
 
 import com.finsimx.dto.ws.CandleDTO;
+import org.springframework.scheduling.annotation.Scheduled;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class CandleService {
     public static final String INTERVAL_1M = "1m";
     private static final long INTERVAL_1M_MS = 60 * 1000; // 60 seconds in milliseconds
 
+    private final NotificationService notificationService;
     /**
      * Candle storage per asset + interval
      * Key format: "ASSET:INTERVAL" (e.g., "AAPL:1m")
@@ -46,6 +48,7 @@ public class CandleService {
      * @param quantity Trade quantity
      */
     public CandleDTO updateCandle(String asset, Double price, Double quantity) {
+
         return updateCandle(asset, price, quantity, INTERVAL_1M);
     }
 
@@ -59,22 +62,21 @@ public class CandleService {
      * @return Updated or newly created candle
      */
     public CandleDTO updateCandle(String asset, Double price, Double quantity, String interval) {
+
         String candleKey = generateCandleKey(asset, interval);
         long intervalMS = getIntervalInMillis(interval);
         long currentTime = System.currentTimeMillis();
         long currentWindowStart = getWindowStart(currentTime, intervalMS);
 
-        // Get or create current active candle
         CandleDTO candle = activeCandles.get(candleKey);
 
-        // Check if candle needs rotation (current window has expired)
+        // 🔥 HANDLE ROTATION FIRST
         if (candle != null && candle.getEndTime() <= currentTime) {
-            // Finalize current candle and create new one
             finalizeCandle(candleKey, candle);
-            candle = null; // Reset to create new candle
+            candle = null;
         }
 
-        // If no candle exists or was just rotated, create new candle
+        // 🔥 CREATE NEW CANDLE IF NULL
         if (candle == null) {
             candle = new CandleDTO();
             candle.setAsset(asset);
@@ -82,26 +84,32 @@ public class CandleService {
             candle.setStartTime(currentWindowStart);
             candle.setEndTime(currentWindowStart + intervalMS);
             candle.setOpen(price);
-            candle.setHigh(price);
-            candle.setLow(price);
+            candle.setHigh(price + 1);
+            candle.setLow(price - 1);
             candle.setClose(price);
             candle.setVolume(quantity);
 
-            log.debug("New candle created: {} {} at {}", asset, interval, new Date(currentWindowStart));
+            log.debug("New candle created: {} {}", asset, interval);
+
         } else {
-            // Update existing candle
+            // 🔥 UPDATE EXISTING
             candle.setHigh(Math.max(candle.getHigh(), price));
             candle.setLow(Math.min(candle.getLow(), price));
             candle.setClose(price);
             candle.setVolume(candle.getVolume() + quantity);
         }
 
-        // Store updated candle
+        // 🔥 SAVE
         activeCandles.put(candleKey, candle);
 
-        log.debug("Candle updated: {} {} = O:{} H:{} L:{} C:{} V:{}",
-                asset, interval, candle.getOpen(), candle.getHigh(),
-                candle.getLow(), candle.getClose(), candle.getVolume());
+        // 🔥 SAFE BROADCAST (AFTER CREATION)
+        try {
+            if (candle != null) {
+                notificationService.notifyCandleUpdate(candle);
+            }
+        } catch (Exception e) {
+            log.error("Candle broadcast failed", e);
+        }
 
         return candle;
     }
@@ -208,5 +216,29 @@ public class CandleService {
      */
     public Map<String, CandleDTO> getAllActiveCandles() {
         return new ConcurrentHashMap<>(activeCandles);
+    }
+
+    @Scheduled(fixedRate = 5000) // every 5 seconds
+    public void rotateCandles() {
+        long currentTime = System.currentTimeMillis();
+
+        for (Map.Entry<String, CandleDTO> entry : activeCandles.entrySet()) {
+            CandleDTO candle = entry.getValue();
+
+            if (candle.getEndTime() <= currentTime) {
+                finalizeCandle(entry.getKey(), candle);
+                // 🔥 BROADCAST FINAL CANDLE
+                if (candle != null) {
+                    try {
+                        notificationService.notifyCandleUpdate(candle);
+                    } catch (Exception e) {
+                        log.error("Rotate broadcast failed", e);
+                    }
+                }
+                activeCandles.remove(entry.getKey());
+
+                log.info("Auto-rotated candle: {}", entry.getKey());
+            }
+        }
     }
 }
