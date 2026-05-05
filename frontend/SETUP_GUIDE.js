@@ -1,6 +1,6 @@
 /**
  * TRADING CHART UI - SETUP & INTEGRATION GUIDE
- * 
+ *
  * This file provides step-by-step instructions for setting up the React trading chart
  */
 

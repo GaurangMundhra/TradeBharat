@@ -61,6 +61,7 @@ public class UserService {
                 .username(registerRequest.getUsername())
                 .email(registerRequest.getEmail())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
+                .role("USER")
                 .balance(BigDecimal.valueOf(100000)) // Initial balance
                 .build();
 

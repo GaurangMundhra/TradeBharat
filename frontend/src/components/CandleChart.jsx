@@ -1,438 +1,427 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { createChart } from 'lightweight-charts';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
+import axiosInstance from '../services/api';
 import './CandleChart.css';
 
+const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8080/api/ws';
+
+const INTERVALS = [
+  { label: '1m', value: '1m' },
+  { label: '5m', value: '5m' },
+  { label: '15m', value: '15m' },
+  { label: '1h', value: '1h' },
+  { label: '1D', value: '1d' },
+];
+
+const CHART_THEMES = {
+  dark: {
+    background: '#0d1117',
+    surface: '#161b22',
+    surfaceElevated: '#1c2230',
+    border: '#30363d',
+    text: '#e6edf3',
+    textMuted: '#7d8590',
+    accent: '#58a6ff',
+    green: '#3fb950',
+    red: '#f85149',
+    gridLine: '#21262d',
+  },
+};
+
+const theme = CHART_THEMES.dark;
+
 /**
- * Real-time Trading Chart Component
- * 
- * Features:
- * - Historical candle fetching via REST API
- * - Real-time candle updates via WebSocket
- * - Asset selector
- * - Current price display
- * - Error handling & automatic reconnection
- * - Smooth real-time updates (no full re-renders)
+ * CandleChart — Controlled component.
+ *
+ * Props:
+ *   asset    – trading symbol (e.g. "BTC"), controlled by parent
+ *   interval – candle interval (default "1m"), controlled by parent (optional)
+ *   limit    – max historical candles to fetch (default 200)
  */
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
-const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8080/api/ws/candles';
-
-const CandleChart = ({
-  defaultAsset = 'AAPL',
-  interval = '1m',
-  limit = 100
-}) => {
-  // State Management
-  const [asset, setAsset] = useState(defaultAsset);
+const CandleChart = ({ asset = 'BTC', interval: intervalProp = '1m', limit = 200 }) => {
+  // Local interval state so the user can switch intervals within the chart
+  // while the parent only controls the asset.
+  const [chartInterval, setChartInterval] = useState(intervalProp);
   const [currentPrice, setCurrentPrice] = useState(null);
+  const [openPrice, setOpenPrice] = useState(null);
+  const [high, setHigh] = useState(null);
+  const [low, setLow] = useState(null);
   const [priceChange, setPriceChange] = useState(null);
+  const [pctChange, setPctChange] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [candleCount, setCandleCount] = useState(0);
 
-  // Refs
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
+  const volumeSeriesRef = useRef(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
-  const lastCandleTimeRef = useRef(null);
-  const candlesMapRef = useRef(new Map()); // For deduplication
+  const reconnectAttemptsRef = useRef(0);
+  const currentPriceRef = useRef(null);
+  const sessionOpenRef = useRef(null);
+  // Track whether the component is still mounted to prevent reconnect after unmount
+  const mountedRef = useRef(true);
 
-  // Asset options
-  const ASSETS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD'];
+  /* ── Chart Init ── */
+  const destroyChart = useCallback(() => {
+    if (chartRef.current) {
+      try { chartRef.current.remove(); } catch (_) {}
+      chartRef.current = null;
+      candleSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+    }
+  }, []);
 
-  /**
-   * Initialize TradingView Lightweight Chart
-   */
-  const initChart = () => {
+  const initChart = useCallback(() => {
     if (!containerRef.current) return;
+    destroyChart();
 
-    // Create chart
     const chart = createChart(containerRef.current, {
       layout: {
-        textColor: '#d1d5db',
-        background: { color: '#1f2937' }
-      },
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: true,
+        textColor: theme.textMuted,
+        background: { color: theme.background },
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: 11,
       },
       width: containerRef.current.clientWidth,
-      height: 400,
+      height: 420,
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: chartInterval === '1m' || chartInterval === '5m',
+        barSpacing: 10,
+        rightBarStaysOnScroll: true,
+        shiftVisibleRangeOnNewBar: true,
+        borderColor: theme.border,
+        fixLeftEdge: false,
+        lockVisibleTimeRangeOnResize: true,
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: {
+          color: `${theme.textMuted}80`,
+          width: 1,
+          style: LineStyle.Dashed,
+          labelBackgroundColor: theme.surfaceElevated,
+        },
+        horzLine: {
+          color: `${theme.textMuted}80`,
+          width: 1,
+          style: LineStyle.Dashed,
+          labelBackgroundColor: theme.surfaceElevated,
+        },
+      },
+      grid: {
+        vertLines: { color: theme.gridLine, style: LineStyle.Dotted },
+        horzLines: { color: theme.gridLine, style: LineStyle.Dotted },
+      },
+      rightPriceScale: {
+        borderColor: theme.border,
+        scaleMargins: { top: 0.08, bottom: 0.28 },
+      },
+      leftPriceScale: { visible: false },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true },
+      handleScale: { mouseWheel: true, pinch: true },
     });
 
-    // Create candlestick series
     const candleSeries = chart.addCandlestickSeries({
-      upColor: '#00ff00',
-      downColor: '#ff0000',
-      borderUpColor: '#00ff00',
-      borderDownColor: '#ff0000',
-      wickUpColor: '#00ff00',
-      wickDownColor: '#ff0000',
+      upColor: theme.green,
+      downColor: theme.red,
+      borderUpColor: theme.green,
+      borderDownColor: theme.red,
+      wickUpColor: `${theme.green}99`,
+      wickDownColor: `${theme.red}99`,
     });
 
-    // Configure time scale
+    const volumeSeries = chart.addHistogramSeries({
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'volume',
+    });
+
+    chart.priceScale('volume').applyOptions({
+      scaleMargins: { top: 0.78, bottom: 0 },
+      borderVisible: false,
+    });
+
     chart.timeScale().fitContent();
 
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
+    volumeSeriesRef.current = volumeSeries;
 
-    // Handle window resize
     const handleResize = () => {
       if (containerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: containerRef.current.clientWidth
-        });
+        chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
       }
     };
-
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  };
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      destroyChart();
+    };
+  }, [chartInterval, destroyChart]);
 
-  /**
-   * Fetch historical candles from REST API
-   */
-  const fetchHistoricalCandles = async (assetSymbol) => {
+  /* ── Fetch Historical via shared axiosInstance (auto-attaches Bearer token) ── */
+  const fetchHistoricalCandles = useCallback(async (sym, ivl) => {
+    if (!candleSeriesRef.current) return;
     try {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("token"); // or wherever you store JWT
+      const response = await axiosInstance.get('/candles', {
+        params: { asset: sym, interval: ivl, limit },
+      });
 
-const response = await fetch(
-  `${API_BASE_URL}/candles?asset=${assetSymbol}&interval=${interval}&limit=${limit}`,
-  {
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
-    }
-  }
-);
+      // Backend returns: { success: true, data: [...candles] }
+      const candles = response.data?.data || [];
+      const sorted = [...candles].reverse();
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch candles: ${response.status}`);
+      const chartCandles = sorted.map(c => ({
+        time: Math.floor(c.startTime / 1000),
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }));
+
+      const volumeData = sorted.map(c => ({
+        time: Math.floor(c.startTime / 1000),
+        value: c.volume ?? 0,
+        color: c.close >= c.open ? `${theme.green}55` : `${theme.red}55`,
+      }));
+
+      candleSeriesRef.current.setData(chartCandles);
+      volumeSeriesRef.current?.setData(volumeData);
+      chartRef.current?.timeScale().fitContent();
+
+      if (chartCandles.length > 0) {
+        const last = chartCandles[chartCandles.length - 1];
+        const first = chartCandles[0];
+
+        currentPriceRef.current = last.close;
+        sessionOpenRef.current = first.open;
+
+        setCurrentPrice(last.close);
+        setOpenPrice(first.open);
+        setHigh(Math.max(...chartCandles.map(c => c.high)));
+        setLow(Math.min(...chartCandles.map(c => c.low)));
+        setCandleCount(chartCandles.length);
+
+        const delta = last.close - first.open;
+        const pct = (delta / first.open) * 100;
+        setPriceChange(delta);
+        setPctChange(pct);
       }
-
-      const responseData = await response.json();
-
-      if (!responseData.success || !responseData.data) {
-        throw new Error(responseData.message || 'Invalid response format');
-      }
-
-      const candles = responseData.data;
-
-      if (candles.length === 0) {
-        console.warn(`No candles found for ${assetSymbol}`);
-        setLoading(false);
-        return;
-      }
-
-      // Convert API format to chart format (reverse order: oldest first)
-      const chartCandles = candles
-        .reverse()
-        .map(candle => ({
-          time: Math.floor(candle.startTime / 1000),
-          open: candle.open,
-          high: candle.high,
-          low: candle.low,
-          close: candle.close,
-          volume: candle.volume,
-          fullData: candle // Store full data for reference
-        }));
-
-      // Set candles on chart
-      if (candleSeriesRef.current) {
-        candleSeriesRef.current.setData(chartCandles);
-
-        // Store last candle timestamp
-        if (chartCandles.length > 0) {
-          lastCandleTimeRef.current = chartCandles[chartCandles.length - 1].time;
-
-          // Update current price from last candle
-          const lastCandle = chartCandles[chartCandles.length - 1];
-          setCurrentPrice(lastCandle.close.toFixed(2));
-        }
-
-        // Store candles in map for update logic
-        candlesMapRef.current.clear();
-        chartCandles.forEach(c => {
-          candlesMapRef.current.set(c.time, { ...c });
-        });
-      }
-
-      setLoading(false);
     } catch (err) {
-      console.error('Error fetching candles:', err);
-      setError(err.message);
+      setError(err.response?.data?.message || err.message || 'Failed to load candles');
+    } finally {
       setLoading(false);
     }
-  };
+  }, [limit]);
 
-  /**
-   * Update chart with new candle from WebSocket
-   */
-  const updateChartWithCandle = (candle) => {
+  /* ── Live Update ── */
+  const updateChartWithCandle = useCallback((candle) => {
     if (!candleSeriesRef.current) return;
 
-    const candleTime = Math.floor(candle.startTime / 1000);
-
-    // Check if candle already exists (update) or is new
-    const existingCandle = candlesMapRef.current.get(candleTime);
-
-    if (existingCandle) {
-      // Update existing candle (same interval window)
-      const updatedCandle = {
-        time: candleTime,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-        volume: candle.volume,
-        fullData: candle
-      };
-
-      candleSeriesRef.current.update(updatedCandle);
-      candlesMapRef.current.set(candleTime, updatedCandle);
-    } else {
-      // Add new candle (new interval window)
-      const newCandle = {
-        time: candleTime,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-        volume: candle.volume,
-        fullData: candle
-      };
-
-      candleSeriesRef.current.update(newCandle);
-      candlesMapRef.current.set(candleTime, newCandle);
-      lastCandleTimeRef.current = candleTime;
-    }
-
-    // Update current price and change
-    const prevPrice = currentPrice ? parseFloat(currentPrice) : null;
-    const newPrice = candle.close;
-    setCurrentPrice(newPrice.toFixed(2));
-
-    if (prevPrice) {
-      const change = newPrice - prevPrice;
-      setPriceChange(change.toFixed(2));
-    }
-  };
-
-  /**
-   * Connect to WebSocket for real-time candle updates
-   */
-  const connectWebSocket = (assetSymbol) => {
-    try {
-      wsRef.current = new WebSocket(WS_URL);
-
-      wsRef.current.onopen = () => {
-        console.log('WebSocket connected');
-        setConnected(true);
-
-        // Subscribe to candles
-        const subscribeMessage = {
-          type: 'SUBSCRIBE_CANDLES',
-          payload: {
-            asset: assetSymbol,
-            interval
-          }
-        };
-
-        wsRef.current.send(JSON.stringify(subscribeMessage));
-      };
-
-      wsRef.current.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-
-          if (message.type === 'CANDLE_UPDATE') {
-            const candle = message.payload;
-
-            // Only update if it's for the current asset
-            if (candle.asset === assetSymbol) {
-              updateChartWithCandle(candle);
-            }
-          }
-        } catch (err) {
-          console.error('Error processing WebSocket message:', err);
-        }
-      };
-
-      wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setConnected(false);
-        setError('WebSocket connection error');
-      };
-
-      wsRef.current.onclose = () => {
-        console.log('WebSocket disconnected');
-        setConnected(false);
-
-        // Attempt reconnection after 3 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('Attempting to reconnect...');
-          connectWebSocket(assetSymbol);
-        }, 3000);
-      };
-    } catch (err) {
-      console.error('Failed to connect WebSocket:', err);
-      setError('Failed to connect to real-time updates');
-      setConnected(false);
-
-      // Retry after 3 seconds
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connectWebSocket(assetSymbol);
-      }, 3000);
-    }
-  };
-
-  /**
-   * Handle asset selector change
-   */
-  const handleAssetChange = async (e) => {
-    const newAsset = e.target.value;
-    setAsset(newAsset);
-    setPriceChange(null);
-
-    // Unsubscribe from current asset
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      const unsubscribeMessage = {
-        type: 'UNSUBSCRIBE_CANDLES',
-        payload: {
-          asset,
-          interval
-        }
-      };
-      wsRef.current.send(JSON.stringify(unsubscribeMessage));
-    }
-
-    // Fetch new asset's data
-    candlesMapRef.current.clear();
-    await fetchHistoricalCandles(newAsset);
-
-    // Subscribe to new asset
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      const subscribeMessage = {
-        type: 'SUBSCRIBE_CANDLES',
-        payload: {
-          asset: newAsset,
-          interval
-        }
-      };
-      wsRef.current.send(JSON.stringify(subscribeMessage));
-    }
-  };
-
-  /**
-   * Lifecycle: Initialize chart and fetch data on mount
-   */
-  useEffect(() => {
-    initChart();
-    fetchHistoricalCandles(asset);
-    connectWebSocket(asset);
-
-    return () => {
-      // Cleanup
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-
-      if (chartRef.current) {
-        chartRef.current.remove();
-      }
+    const bar = {
+      time: Math.floor(candle.startTime / 1000),
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
     };
+
+    candleSeriesRef.current.update(bar);
+
+    if (volumeSeriesRef.current) {
+      volumeSeriesRef.current.update({
+        time: bar.time,
+        value: candle.volume ?? 0,
+        color: candle.close >= candle.open ? `${theme.green}55` : `${theme.red}55`,
+      });
+    }
+
+    currentPriceRef.current = candle.close;
+    setCurrentPrice(candle.close);
+    setLastUpdated(new Date());
+
+    if (sessionOpenRef.current !== null) {
+      const delta = candle.close - sessionOpenRef.current;
+      const pct = (delta / sessionOpenRef.current) * 100;
+      setPriceChange(delta);
+      setPctChange(pct);
+    }
   }, []);
 
-  /**
-   * Lifecycle: Handle asset changes
-   */
+  /* ── WebSocket ── */
+  const connectWebSocket = useCallback((sym, ivl) => {
+    if (wsRef.current) {
+      wsRef.current.onclose = null; // prevent reconnect on intentional close
+      wsRef.current.close();
+    }
+
+    const url = `${WS_BASE_URL}/candles`;
+    const ws = new WebSocket(url);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      reconnectAttemptsRef.current = 0;
+      setConnected(true);
+      ws.send(JSON.stringify({
+        type: 'SUBSCRIBE_CANDLES',
+        payload: { asset: sym, interval: ivl },
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'CANDLE_UPDATE') updateChartWithCandle(msg.payload);
+      } catch (_) {}
+    };
+
+    ws.onerror = () => setError('WebSocket error — retrying…');
+
+    ws.onclose = () => {
+      setConnected(false);
+      // Only reconnect if the component is still mounted
+      if (!mountedRef.current) return;
+      reconnectAttemptsRef.current++;
+      const delay = Math.min(1000 * 2 ** reconnectAttemptsRef.current, 30000);
+      reconnectTimeoutRef.current = window.setTimeout(() => connectWebSocket(sym, ivl), delay);
+    };
+  }, [updateChartWithCandle]);
+
+  /* ── React to asset/interval changes ── */
   useEffect(() => {
-    // This is handled in handleAssetChange to control the flow
-  }, [asset]);
+    const resizeCleanup = initChart();
+
+    fetchHistoricalCandles(asset, chartInterval);
+    connectWebSocket(asset, chartInterval);
+
+    // Reset stats when asset/interval changes
+    setPriceChange(null);
+    setPctChange(null);
+
+    return () => {
+      clearTimeout(reconnectTimeoutRef.current);
+      if (wsRef.current) {
+        wsRef.current.onclose = null; // prevent reconnect loop
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      resizeCleanup?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asset, chartInterval]);
+
+  /* ── Unmount guard ── */
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  /* ── Derived display values ── */
+  const fmt = (n) => (n != null ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—');
+  const isPositive = (priceChange ?? 0) >= 0;
 
   return (
-    <div className="candle-chart-container">
-      {/* Header */}
-      <div className="chart-header">
-        <div className="header-left">
-          <h2>Trading Chart</h2>
-          
-          {/* Asset Selector */}
-          <select 
-            value={asset} 
-            onChange={handleAssetChange}
-            className="asset-selector"
-            disabled={loading}
-          >
-            {ASSETS.map(a => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
+    <div className="candle-chart-wrapper">
+      {/* Keyframes */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+      `}</style>
+
+      {/* ── Toolbar ── */}
+      <div className="candle-chart-toolbar">
+        <div className="candle-chart-toolbar-left">
+          {/* Interval selector */}
+          {INTERVALS.map(i => (
+            <button
+              key={i.value}
+              className={`interval-pill ${i.value === chartInterval ? 'active' : ''}`}
+              onClick={() => setChartInterval(i.value)}
+            >
+              {i.label}
+            </button>
+          ))}
+
+          <span className="toolbar-divider" />
+
+          {/* Connection status */}
+          <span className={`status-indicator ${connected ? 'connected' : ''}`} />
+          <span className={`status-text ${connected ? 'connected' : ''}`}>
+            {connected ? 'LIVE' : 'OFFLINE'}
+          </span>
         </div>
 
-        {/* Connection Status */}
-        <div className="connection-status">
-          <span className={`status-dot ${connected ? 'connected' : 'disconnected'}`}></span>
-          <span className="status-text">
-            {connected ? 'Live' : 'Offline'}
-          </span>
+        {/* Price info */}
+        <div className="candle-chart-toolbar-right">
+          <span className="toolbar-price">${fmt(currentPrice)}</span>
+          {priceChange != null && (
+            <span className={`toolbar-delta ${isPositive ? 'positive' : 'negative'}`}>
+              {isPositive ? '▲' : '▼'} {isPositive ? '+' : ''}{fmt(priceChange)} ({isPositive ? '+' : ''}{pctChange?.toFixed(2)}%)
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Current Price Display */}
-      <div className="price-display">
-        <div className="current-price">
-          <span className="label">Current Price</span>
-          <span className="price">
-            {currentPrice ? `$${currentPrice}` : '-'}
-          </span>
-        </div>
+      {/* ── Stats Row ── */}
+      <div className="candle-chart-stats">
+        {[
+          { label: 'Open', value: fmt(openPrice) },
+          { label: 'High', value: fmt(high), className: 'stat-green' },
+          { label: 'Low', value: fmt(low), className: 'stat-red' },
+          { label: 'Candles', value: candleCount || '—' },
+          { label: 'Interval', value: chartInterval.toUpperCase() },
+        ].map(stat => (
+          <div key={stat.label} className="chart-stat-item">
+            <div className="chart-stat-label">{stat.label}</div>
+            <div className={`chart-stat-value ${stat.className || ''}`}>{stat.value}</div>
+          </div>
+        ))}
+      </div>
 
-        {priceChange !== null && (
-          <div className={`price-change ${priceChange >= 0 ? 'up' : 'down'}`}>
-            <span className="label">Change</span>
-            <span className="change">
-              {priceChange >= 0 ? '+' : ''}{priceChange}
-            </span>
+      {/* ── Chart Area ── */}
+      <div className="candle-chart-area">
+        <div ref={containerRef} style={{ height: 420 }} />
+        {loading && (
+          <div className="candle-chart-overlay">
+            <div className="candle-chart-spinner" />
           </div>
         )}
       </div>
 
-      {/* Chart Container */}
-      <div 
-        ref={containerRef}
-        className="chart-container"
-        style={{ width: '100%', height: '400px' }}
-      />
-
-      {/* Loading State */}
-      {loading && (
-        <div className="loading-overlay">
-          <div className="spinner"></div>
-          <p>Loading candles...</p>
-        </div>
-      )}
-
-      {/* Error State */}
+      {/* ── Error Banner ── */}
       {error && (
-        <div className="error-message">
-          <p>⚠️ {error}</p>
-          <button onClick={() => setError(null)}>Dismiss</button>
+        <div className="candle-chart-error">
+          <span>⚠</span>
+          <span>{error}</span>
+          <button
+            onClick={() => { setError(null); fetchHistoricalCandles(asset, chartInterval); }}
+            className="candle-chart-retry-btn"
+          >
+            Retry
+          </button>
         </div>
       )}
 
-      {/* Interval Information */}
-      <div className="chart-info">
-        <p>Interval: <strong>{interval}</strong> | Candles: <strong>{candlesMapRef.current.size}</strong></p>
+      {/* ── Footer ── */}
+      <div className="candle-chart-footer">
+        <span>TRADEBHARAT · MARKET DATA</span>
+        <span>
+          {lastUpdated
+            ? `UPDATED ${lastUpdated.toLocaleTimeString('en-IN', { hour12: false })}`
+            : `${limit} CANDLES LOADED`}
+        </span>
       </div>
     </div>
   );

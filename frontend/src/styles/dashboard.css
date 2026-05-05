@@ -1,0 +1,510 @@
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+  background: #0a0e27;
+  color: #fff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dashboard-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1729 100%);
+  min-height: 100vh;
+}
+
+.error-banner {
+  padding: 12px 24px;
+  background: rgba(255, 60, 80, 0.15);
+  border-bottom: 1px solid rgba(255, 60, 80, 0.3);
+  color: #ff6b7a;
+  font-size: 13px;
+  text-align: center;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px 24px;
+  flex: 1;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.dashboard-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dashboard-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-title {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #6b9eff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chart-container {
+  background: rgba(20, 25, 50, 0.6);
+  border: 1px solid rgba(100, 150, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 400px;
+}
+
+.orderbook-container {
+  background: rgba(20, 25, 50, 0.6);
+  border: 1px solid rgba(100, 150, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 300px;
+}
+
+/* Card Styles */
+.card {
+  background: rgba(20, 25, 50, 0.6);
+  border: 1px solid rgba(100, 150, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: rgba(100, 150, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(107, 158, 255, 0.1);
+}
+
+.card-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Wallet Card */
+.wallet-card {
+  grid-column: span 1;
+}
+
+.wallet-balance {
+  font-size: 24px;
+  font-weight: 700;
+  color: #6b9eff;
+  margin: 8px 0;
+}
+
+.wallet-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(100, 150, 255, 0.1);
+}
+
+.wallet-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wallet-stat-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wallet-stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Portfolio Card */
+.portfolio-card {
+  grid-column: span 1;
+}
+
+.portfolio-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(30, 35, 65, 0.5);
+  border-radius: 6px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.stat-value.gain {
+  color: #4adc81;
+}
+
+.stat-value.loss {
+  color: #ff6b7a;
+}
+
+/* Holdings Section */
+.holdings-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(100, 150, 255, 0.1);
+}
+
+.holdings-title {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.holdings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.holding-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(30, 35, 65, 0.5);
+  border-radius: 6px;
+  border-left: 3px solid #6b9eff;
+}
+
+.holding-asset {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.holding-symbol {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b9eff;
+}
+
+.holding-qty {
+  font-size: 11px;
+  color: #888;
+}
+
+.holding-values {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+
+.holding-avg {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.holding-pnl {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.holding-pnl.gain {
+  color: #4adc81;
+}
+
+.holding-pnl.loss {
+  color: #ff6b7a;
+}
+
+.holdings-empty {
+  margin-top: 12px;
+  padding: 16px;
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+  background: rgba(30, 35, 65, 0.3);
+  border-radius: 6px;
+  border: 1px dashed rgba(100, 150, 255, 0.15);
+}
+
+/* Orders Card */
+.orders-card {
+  grid-column: span 1;
+}
+
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.order-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(30, 35, 65, 0.5);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.order-type {
+  font-weight: 600;
+  color: #aaa;
+}
+
+.order-type.BUY {
+  color: #4adc81;
+}
+
+.order-type.SELL {
+  color: #ff6b7a;
+}
+
+.order-price {
+  font-size: 11px;
+  color: #888;
+}
+
+.order-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.status-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.status-badge.OPEN {
+  background: rgba(107, 158, 255, 0.2);
+  color: #6b9eff;
+}
+
+.status-badge.FILLED {
+  background: rgba(74, 220, 129, 0.2);
+  color: #4adc81;
+}
+
+.status-badge.CANCELLED {
+  background: rgba(255, 107, 122, 0.2);
+  color: #ff6b7a;
+}
+
+/* Trades Card */
+.trades-card {
+  grid-column: span 1;
+}
+
+.trades-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.trade-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(30, 35, 65, 0.5);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.trade-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trade-asset {
+  font-weight: 600;
+  color: #aaa;
+}
+
+.trade-price {
+  font-size: 11px;
+  color: #888;
+}
+
+.trade-amount {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-weight: 600;
+  color: #6b9eff;
+}
+
+/* Trades Table */
+.trades-table-container {
+  padding: 0 24px 24px;
+  width: 100%;
+}
+
+.trades-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(20, 25, 50, 0.6);
+  border: 1px solid rgba(100, 150, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.trades-table thead {
+  background: rgba(30, 35, 65, 0.5);
+  border-bottom: 1px solid rgba(100, 150, 255, 0.1);
+}
+
+.trades-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.trades-table td {
+  padding: 12px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(100, 150, 255, 0.05);
+}
+
+.trades-table tbody tr:hover {
+  background: rgba(100, 150, 255, 0.05);
+}
+
+.trades-table .asset {
+  font-weight: 600;
+  color: #6b9eff;
+}
+
+.trades-table .type {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.trades-table .type.buy {
+  background: rgba(74, 220, 129, 0.2);
+  color: #4adc81;
+}
+
+.trades-table .type.sell {
+  background: rgba(255, 107, 122, 0.2);
+  color: #ff6b7a;
+}
+
+.trades-table .time {
+  color: #888;
+  font-size: 12px;
+}
+
+.loading-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+  color: #6b9eff;
+  font-size: 16px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px 16px;
+  }
+
+  .portfolio-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .wallet-info {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-container {
+    min-height: 300px;
+  }
+
+  .orderbook-container {
+    min-height: 250px;
+  }
+
+  .trades-table {
+    font-size: 12px;
+  }
+
+  .trades-table th,
+  .trades-table td {
+    padding: 8px 12px;
+  }
+}
