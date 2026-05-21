@@ -55,6 +55,15 @@ export const walletAPI = {
 
   // GET /api/wallet/balance — returns raw BigDecimal
   getBalance: () => axiosInstance.get("/wallet/balance"),
+
+  // POST /api/wallet/deposit — { amount, description }
+  deposit: (data) => axiosInstance.post("/wallet/deposit", data),
+
+  // POST /api/wallet/withdraw — { amount, description }
+  withdraw: (data) => axiosInstance.post("/wallet/withdraw", data),
+
+  // GET /api/wallet/transactions/all — all transactions
+  getTransactions: () => axiosInstance.get("/wallet/transactions/all"),
 };
 
 // ==================== ORDER ENDPOINTS ====================

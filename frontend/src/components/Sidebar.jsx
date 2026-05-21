@@ -10,10 +10,10 @@ export default function Sidebar({ isOpen, onToggle }) {
 
   const menuItems = [
     { label: 'Dashboard', icon: '📊', href: '/dashboard', enabled: true },
-    { label: 'Orders', icon: '📋', href: '/orders', enabled: false },
-    { label: 'Trades', icon: '💹', href: '/trades', enabled: false },
-    { label: 'Wallet', icon: '💰', href: '/wallet', enabled: false },
-    { label: 'Settings', icon: '⚙️', href: '/settings', enabled: false },
+    { label: 'Orders',    icon: '📋', href: '/orders',    enabled: true },
+    { label: 'Trades',    icon: '💹', href: '/trades',    enabled: true },
+    { label: 'Wallet',    icon: '💰', href: '/wallet',    enabled: true },
+    { label: 'Settings',  icon: '⚙️', href: '/settings',  enabled: true },
   ];
 
   const handleLogout = () => {
@@ -38,14 +38,12 @@ export default function Sidebar({ isOpen, onToggle }) {
           {menuItems.map((item) => (
             <button
               key={item.label}
-              className={`menu-item ${location.pathname === item.href ? 'active' : ''} ${!item.enabled ? 'disabled' : ''}`}
-              title={item.enabled ? item.label : `${item.label} (coming soon)`}
-              onClick={() => {
-                if (item.enabled) navigate(item.href);
-              }}
+              className={`menu-item ${location.pathname === item.href ? 'active' : ''}`}
+              title={item.label}
+              onClick={() => navigate(item.href)}
             >
               <span className="menu-icon">{item.icon}</span>
-              <span className="menu-label">{item.label}{!item.enabled ? ' ·' : ''}</span>
+              <span className="menu-label">{item.label}</span>
             </button>
           ))}
         </nav>

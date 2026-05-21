@@ -104,10 +104,7 @@ public class MatchingService {
                 break;
             }
 
-            // Don't match with own order
-            if (buyOrder.getUser().getId().equals(sellOrder.getUser().getId())) {
-                continue;
-            }
+            // Self-trade allowed for paper trading simulation
 
             BigDecimal sellRemaining = sellOrder.getQuantity().subtract(sellOrder.getFilledQuantity());
             BigDecimal tradeQuantity = remainingQuantity.min(sellRemaining);
@@ -149,10 +146,7 @@ public class MatchingService {
                 break;
             }
 
-            // Don't match with own order
-            if (sellOrder.getUser().getId().equals(buyOrder.getUser().getId())) {
-                continue;
-            }
+            // Self-trade allowed for paper trading simulation
 
             BigDecimal buyRemaining = buyOrder.getQuantity().subtract(buyOrder.getFilledQuantity());
             BigDecimal tradeQuantity = remainingQuantity.min(buyRemaining);
